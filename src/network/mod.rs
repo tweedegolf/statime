@@ -6,7 +6,7 @@ use crate::time::OffsetTime;
 #[derive(Debug)]
 pub struct NetworkError;
 
-pub trait NetworkRuntime : Clone {
+pub trait NetworkRuntime: Clone {
     type InterfaceDescriptor: Clone;
     type PortType: NetworkPort;
     fn open(
