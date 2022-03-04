@@ -179,7 +179,15 @@ impl LinuxNetworkPort {
             let mut ts = None;
             for c in recv.cmsgs() {
                 if let ControlMessageOwned::ScmTimestampsns(timestamps) = c {
-                    ts = Some(OffsetTime::from_timespec(&timestamps.system));
+                    if timestamps.hw_raw.tv_sec() != 0 || timestamps.hw_raw.tv_nsec() != 0 {
+                        // Use hardware timestamp if available
+                        log::debug!("Used hardware timestamp");
+                        ts = Some(OffsetTime::from_timespec(&timestamps.hw_raw));
+                    } else {
+                        // but fall back to software if not.
+                        log::debug!("Used software timestamp");
+                        ts = Some(OffsetTime::from_timespec(&timestamps.system));
+                    }
                 }
             }
             tx.send(NetworkPacket {
