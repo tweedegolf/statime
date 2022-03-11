@@ -4,7 +4,7 @@ use crate::{
     time::{Duration, Instant},
 };
 use libc::{clockid_t, timespec};
-use std::{fmt::Display, ops::DerefMut};
+use std::{ffi::CString, fmt::Display, ops::DerefMut};
 
 #[cfg(target_pointer_width = "64")]
 pub(super) type Fixed = fixed::types::I48F16;
@@ -156,6 +156,25 @@ impl RawLinuxClock {
         SYSTEM_CLOCKS.into_iter().map(|(id, name)| Self {
             id,
             name: name.into(),
+            quality: ClockQuality {
+                clock_class: 248,
+                clock_accuracy: ClockAccuracy::MS10,
+                offset_scaled_log_variance: 0xFFFF,
+            },
+        })
+    }
+
+    pub fn get_from_file(filename: &str) -> Result<Self, i32> {
+        let filename_c = CString::new(filename).unwrap();
+        let fd = unsafe { libc::open(filename_c.as_ptr(), libc::O_RDWR) };
+        if fd == -1 {
+            return Err(unsafe { *libc::__errno_location() });
+        }
+
+        // TODO: Add a more reasonable clockquality
+        Ok(Self {
+            id: ((!(fd as libc::clockid_t)) << 3) | 3,
+            name: filename.into(),
             quality: ClockQuality {
                 clock_class: 248,
                 clock_accuracy: ClockAccuracy::MS10,
