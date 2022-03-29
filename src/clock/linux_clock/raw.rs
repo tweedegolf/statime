@@ -40,6 +40,7 @@ pub struct RawLinuxClock {
     id: clockid_t,
     name: String,
     quality: ClockQuality,
+    last_internal_freq_multiplier: f64,
 }
 impl RawLinuxClock {
     /// https://manpages.debian.org/testing/manpages-dev/ntp_adjtime.3.en.html#DESCRIPTION
@@ -93,20 +94,21 @@ impl RawLinuxClock {
             // We do an offset with precision
             let mut new_timex = current_timex.clone();
 
-            new_timex.set_status(
+            /*new_timex.set_status(
                 new_timex.get_status()
                     | StatusFlags::PLL // We want to change the PLL, a major component in the clock circuit
                     | StatusFlags::PPSFREQ // We want the PPS signal to change as well
                     | StatusFlags::PPSTIME // The PPS time should be changed
                     | StatusFlags::FREQHOLD, // We want no automatic frequency updates
-            );
+            );*/
 
             new_timex.set_mode(
-                AdjustFlags::SETOFFSET // We have an offset to set
-                | AdjustFlags::FREQUENCY // We'll be setting the frequency as well
-                | AdjustFlags::NANO, // We're using nanoseconds
+                //AdjustFlags::SETOFFSET // We have an offset to set
+                AdjustFlags::FREQUENCY // We'll be setting the frequency as well
+                //AdjustFlags::NANO, // We're using nanoseconds
             );
 
+            /*
             // Start with a seconds value of 0 and express the full time offset in nanos
             new_timex.time.tv_sec = 0;
             new_timex.time.tv_usec = (time_offset * 1_000_000_000.0) as Int;
@@ -115,7 +117,9 @@ impl RawLinuxClock {
             while new_timex.time.tv_usec < 0 {
                 new_timex.time.tv_sec -= 1;
                 new_timex.time.tv_usec += 1_000_000_000;
-            }
+            }*/
+
+            let internal_freq_multiplier = 1.0/(1.0+time_offset);
 
             // We need to change the ppm value to a speed factor so we can use multiplication to get the new frequency
             let current_ppm = current_timex.get_frequency();
@@ -123,9 +127,10 @@ impl RawLinuxClock {
             // Ppm is in the opposite direction from the speed factor. A postive ppm means the clock is running slower, so we use its negative.
             let current_frequency_multiplier = 1.0 + -current_ppm.to_num::<f64>() / 1_000_000.0;
             // Now multiply the frequencies
-            let new_frequency_multiplier = current_frequency_multiplier * frequency_multiplier;
+            let new_frequency_multiplier = current_frequency_multiplier * frequency_multiplier * internal_freq_multiplier / self.last_internal_freq_multiplier;
             // Get back the new ppm value by subtracting the 1.0 base from it, changing the percentage to the ppm again and then taking the negative of that.
             let new_ppm = -Fixed::from_num((new_frequency_multiplier - 1.0) * 1_000_000.0);
+            self.last_internal_freq_multiplier = internal_freq_multiplier;
 
             new_timex.set_frequency(new_ppm);
 
@@ -161,6 +166,7 @@ impl RawLinuxClock {
                 clock_accuracy: ClockAccuracy::MS10,
                 offset_scaled_log_variance: 0xFFFF,
             },
+            last_internal_freq_multiplier: 1.0,
         })
     }
 
@@ -180,6 +186,7 @@ impl RawLinuxClock {
                 clock_accuracy: ClockAccuracy::MS10,
                 offset_scaled_log_variance: 0xFFFF,
             },
+            last_internal_freq_multiplier: 1.0,
         })
     }
 
