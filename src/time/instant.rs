@@ -1,6 +1,6 @@
 use super::duration::Duration;
 use crate::datastructures::common::Timestamp;
-use fixed::{traits::ToFixed, types::U96F32};
+use fixed::{traits::ToFixed, types::I96F32};
 use nix::sys::time::TimeSpec;
 use std::{
     fmt::Display,
@@ -10,24 +10,24 @@ use std::{
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Default)]
 pub struct Instant {
     /// Time in nanos
-    inner: U96F32,
+    inner: I96F32,
 }
 
 impl Instant {
     pub fn from_secs(secs: u64) -> Self {
-        let inner = secs.to_fixed::<U96F32>() * 1_000_000_000.to_fixed::<U96F32>();
+        let inner = secs.to_fixed::<I96F32>() * 1_000_000_000.to_fixed::<I96F32>();
         Self { inner }
     }
     pub fn from_millis(millis: u64) -> Self {
-        let inner = millis.to_fixed::<U96F32>() * 1_000_000.to_fixed::<U96F32>();
+        let inner = millis.to_fixed::<I96F32>() * 1_000_000.to_fixed::<I96F32>();
         Self { inner }
     }
     pub fn from_micros(micros: u64) -> Self {
-        let inner = micros.to_fixed::<U96F32>() * 1_000.to_fixed::<U96F32>();
+        let inner = micros.to_fixed::<I96F32>() * 1_000.to_fixed::<I96F32>();
         Self { inner }
     }
     pub fn from_nanos(nanos: u64) -> Self {
-        let inner = nanos.to_fixed::<U96F32>();
+        let inner = nanos.to_fixed::<I96F32>();
         Self { inner }
     }
     pub fn from_fixed_nanos<F: ToFixed>(nanos: F) -> Self {
@@ -35,14 +35,14 @@ impl Instant {
             inner: nanos.to_fixed(),
         }
     }
-    pub fn nanos(&self) -> U96F32 {
+    pub fn nanos(&self) -> I96F32 {
         self.inner
     }
     pub fn sub_nanos(&self) -> u32 {
-        (self.inner % 1_000_000_000.to_fixed::<U96F32>()).to_num()
+        (self.inner % 1_000_000_000.to_fixed::<I96F32>()).to_num()
     }
     pub fn secs(&self) -> u64 {
-        (self.inner / 1_000_000_000.to_fixed::<U96F32>()).to_num()
+        (self.inner / 1_000_000_000.to_fixed::<I96F32>()).to_num()
     }
 
     pub fn from_timespec(spec: &TimeSpec) -> Self {
@@ -119,20 +119,20 @@ mod tests {
     fn values() {
         assert_eq!(
             Instant::from_secs(10).nanos(),
-            10_000_000_000u64.to_fixed::<U96F32>()
+            10_000_000_000u64.to_fixed::<I96F32>()
         );
         assert_eq!(
             Instant::from_millis(10).nanos(),
-            10_000_000u64.to_fixed::<U96F32>()
+            10_000_000u64.to_fixed::<I96F32>()
         );
         assert_eq!(
             Instant::from_micros(10).nanos(),
-            10_000u64.to_fixed::<U96F32>()
+            10_000u64.to_fixed::<I96F32>()
         );
-        assert_eq!(Instant::from_nanos(10).nanos(), 10u64.to_fixed::<U96F32>());
+        assert_eq!(Instant::from_nanos(10).nanos(), 10u64.to_fixed::<I96F32>());
         assert_eq!(
             Instant::from_fixed_nanos(10.123f64).nanos(),
-            10.123f64.to_fixed::<U96F32>()
+            10.123f64.to_fixed::<I96F32>()
         );
         assert_eq!(Instant::from_secs(10).secs(), 10);
         assert_eq!(Instant::from_millis(10).secs(), 0);
