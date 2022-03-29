@@ -65,14 +65,8 @@ impl Add<Duration> for Instant {
     type Output = Instant;
 
     fn add(self, rhs: Duration) -> Self::Output {
-        if rhs.nanos().is_negative() {
-            Instant {
-                inner: self.nanos() - rhs.nanos().unsigned_abs(),
-            }
-        } else {
-            Instant {
-                inner: self.nanos() + rhs.nanos().unsigned_abs(),
-            }
+        Instant{
+            inner: self.nanos() + rhs.nanos(),
         }
     }
 }
