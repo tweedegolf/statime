@@ -2,11 +2,49 @@ use crate::time::{Duration, Instant};
 
 use super::raw::Fixed;
 use bitflags::bitflags;
-use libc::timex;
+use libc::{timex, timeval};
 use std::ops::{Deref, DerefMut};
 
 #[derive(Clone)]
 pub struct Timex(timex);
+
+impl Default for Timex {
+    fn default() -> Self {
+        Timex(timex{
+            modes: 0,
+            offset: 0,
+            freq: 0,
+            maxerror: 0,
+            esterror: 0,
+            status: 0,
+            constant: 0,
+            precision: 0,
+            tolerance: 0,
+            time: timeval{ tv_sec: 0, tv_usec: 0 },
+            tick: 0,
+            ppsfreq: 0,
+            jitter: 0,
+            shift: 0,
+            stabil: 0,
+            jitcnt: 0,
+            calcnt: 0,
+            errcnt: 0,
+            stbcnt: 0,
+            tai: 0,
+            __unused1: 0,
+            __unused2: 0,
+            __unused3: 0,
+            __unused4: 0,
+            __unused5: 0,
+            __unused6: 0,
+            __unused7: 0,
+            __unused8: 0,
+            __unused9: 0,
+            __unused10: 0,
+            __unused11: 0,
+        })
+    }
+}
 
 #[allow(dead_code)]
 impl Timex {

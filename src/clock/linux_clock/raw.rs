@@ -90,32 +90,8 @@ impl RawLinuxClock {
         } else {
             let (current_timex, _clock_state) = self.get_clock_state()?;
 
-            // We do an offset with precision
-            let mut new_timex = current_timex.clone();
-
-            new_timex.set_status(
-                new_timex.get_status()
-                    | StatusFlags::PLL // We want to change the PLL, a major component in the clock circuit
-                    | StatusFlags::PPSFREQ // We want the PPS signal to change as well
-                    | StatusFlags::PPSTIME // The PPS time should be changed
-                    | StatusFlags::FREQHOLD, // We want no automatic frequency updates
-            );
-
-            new_timex.set_mode(
-                AdjustFlags::SETOFFSET // We have an offset to set
-                | AdjustFlags::FREQUENCY // We'll be setting the frequency as well
-                | AdjustFlags::NANO, // We're using nanoseconds
-            );
-
-            // Start with a seconds value of 0 and express the full time offset in nanos
-            new_timex.time.tv_sec = 0;
-            new_timex.time.tv_usec = (time_offset * 1_000_000_000.0) as Int;
-
-            // The nanos must not be negative. In that case the timestamp must be delivered as a negative seconds with a postive nanos value
-            while new_timex.time.tv_usec < 0 {
-                new_timex.time.tv_sec -= 1;
-                new_timex.time.tv_usec += 1_000_000_000;
-            }
+            let mut new_timex = Timex::default();
+            new_timex.set_mode(AdjustFlags::FREQUENCY);
 
             // We need to change the ppm value to a speed factor so we can use multiplication to get the new frequency
             let current_ppm = current_timex.get_frequency();
@@ -129,6 +105,30 @@ impl RawLinuxClock {
 
             new_timex.set_frequency(new_ppm);
 
+            // Adjust the clock frequency and handle its errors
+            let error = unsafe { libc::clock_adjtime(self.id, new_timex.deref_mut() as *mut _) };
+            match error {
+                -1 => return Err(unsafe { *libc::__errno_location() }),
+                _ => (),
+            }
+
+            let mut new_timex = Timex::default();
+
+            new_timex.set_mode(
+                AdjustFlags::SETOFFSET // We have an offset to set
+                | AdjustFlags::NANO, // We're using nanoseconds
+            );
+
+            // Start with a seconds value of 0 and express the full time offset in nanos
+            new_timex.time.tv_sec = 0;
+            new_timex.time.tv_usec = (time_offset * 1_000_000_000.0) as Int;
+
+            // The nanos must not be negative. In that case the timestamp must be delivered as a negative seconds with a postive nanos value
+            while new_timex.time.tv_usec < 0 {
+                new_timex.time.tv_sec -= 1;
+                new_timex.time.tv_usec += 1_000_000_000;
+            }
+            
             // Adjust the clock time and handle its errors
             let error = unsafe { libc::clock_adjtime(self.id, new_timex.deref_mut() as *mut _) };
             match error {
